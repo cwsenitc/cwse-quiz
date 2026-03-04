@@ -31,10 +31,12 @@
                     <span class="text-xs font-bold text-slate-400">STATUS:</span>
                     <button id="toggle-btn" onclick="toggleQuiz()" class="text-xs font-black px-6 py-2 rounded-full bg-red-500 text-white transition">OFFLINE</button>
                 </div>
-                <div class="flex items-center gap-3">
-                    <span class="text-xs font-bold text-slate-400">TIME (MINS):</span>
-                    <input type="number" id="quiz-duration-input" class="w-16 p-2 text-center border rounded-lg font-bold text-indigo-600">
-                    <button onclick="updateDuration()" class="bg-indigo-50 text-indigo-600 px-4 py-2 rounded-lg text-xs font-bold border">SET</button>
+                <div class="flex items-center gap-3 border-l pl-4">
+                    <span class="text-xs font-bold text-slate-400">TIME:</span>
+                    <input type="number" id="quiz-duration-input" class="w-14 p-1 text-center border rounded font-bold text-indigo-600 text-sm">
+                    <span class="text-xs font-bold text-slate-400">LIMIT:</span>
+                    <input type="number" id="quiz-limit-input" class="w-14 p-1 text-center border rounded font-bold text-indigo-600 text-sm">
+                    <button onclick="updateSettings()" class="bg-indigo-50 text-indigo-600 px-3 py-1 rounded text-[10px] font-bold border">SET</button>
                 </div>
             </div>
 
@@ -234,11 +236,11 @@
                 btn.innerText = d.active ? "ACTIVE" : "OFFLINE";
                 btn.className = d.active ? "text-xs font-black px-6 py-2 rounded-full bg-emerald-500 text-white shadow-lg" : "text-xs font-black px-6 py-2 rounded-full bg-red-500 text-white";
                 document.getElementById('quiz-duration-input').value = d.duration || 10;
+                document.getElementById('quiz-limit-input').value = d.questionLimit || 0;
             });
 
             if(submissionUnsubscribe) submissionUnsubscribe();
             
-            // AUTOMATIC SORTING: Score (Descending) then Timestamp (Ascending)
             submissionUnsubscribe = db.collection('submissions')
                 .orderBy('score', 'desc')
                 .orderBy('timestamp', 'asc')
@@ -279,7 +281,7 @@
                         document.getElementById('avg-rate').innerText = "0.0";
                     }
                 }, err => {
-                    console.error("Sorting error: Make sure a composite index for score (desc) and timestamp (asc) is created in Firebase.", err);
+                    console.error("Sorting error", err);
                 });
 
             db.collection('questions').onSnapshot(snap => {
@@ -306,9 +308,14 @@
             await db.collection('settings').doc('quizStatus').update({ active: btn.innerText === "OFFLINE" });
         }
 
-        async function updateDuration() {
+        async function updateSettings() {
             const mins = document.getElementById('quiz-duration-input').value;
-            await db.collection('settings').doc('quizStatus').update({ duration: parseInt(mins) });
+            const limit = document.getElementById('quiz-limit-input').value;
+            await db.collection('settings').doc('quizStatus').update({ 
+                duration: parseInt(mins), 
+                questionLimit: parseInt(limit) || 0 
+            });
+            alert("Settings updated!");
         }
 
         async function deleteQ(id) { if(confirm("Delete?")) await db.collection('questions').doc(id).delete(); }
@@ -325,7 +332,6 @@
         }
 
         async function downloadCSV() {
-            // CSV follows the same tie-break sorting rule
             const snap = await db.collection('submissions')
                 .orderBy('score', 'desc')
                 .orderBy('timestamp', 'asc')
