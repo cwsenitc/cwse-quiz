@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PoSH Quiz | CWSE, ICC - NITC</title>
+    <title>IWD'26 Quiz | CWSE - NITC</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
@@ -16,20 +16,23 @@
 
     <div id="welcome-screen" class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md border-t-8 border-indigo-600">
         <div class="text-center mb-8">
-            <h1 id="display-title" class="text-2xl font-black text-slate-800 tracking-tight">Loading...</h1>
-            <p id="display-subtitle" class="text-slate-500 text-sm"></p>
-            <p id="display-dates" class="text-slate-300 text-sm italic"></p>
+            <h1 class="text-2xl font-black text-slate-800 tracking-tight">IWD'26 Quiz</h1>
+            <p class="text-slate-500 text-sm">By CWSE, NITC</p>
+            <p class="text-slate-300 text-sm italic">08, March, 2026</p>
         </div>
-        <div id="input-fields-container" class="space-y-4">
+        <div class="space-y-4">
+            <input type="text" id="userName" placeholder="Full Name" class="w-full p-4 border rounded-xl outline-none focus:ring-2 focus:ring-indigo-500">
+            <input type="text" id="rollNo" placeholder="Roll Number (e.g. B210xxxEE)" class="w-full p-4 border rounded-xl outline-none focus:ring-2 focus:ring-indigo-500">
+            <input type="email" id="userEmail" placeholder="Email ID" class="w-full p-4 border rounded-xl outline-none focus:ring-2 focus:ring-indigo-500">
+            
+            <div id="status-box" class="pt-4 text-center">
+                <div id="wait-msg" class="p-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-700 font-medium">
+                    <span class="animate-pulse">⏳</span> Wait for Admin to enable the quiz...
+                </div>
+                <button id="start-btn" onclick="startQuiz()" class="hidden w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl shadow-lg transition transform hover:scale-[1.02]">
+                    Start Quiz (<span id="set-time-display">10</span> Mins)
+                </button>
             </div>
-        
-        <div id="status-box" class="pt-4 text-center">
-            <div id="wait-msg" class="p-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-700 font-medium">
-                <span class="animate-pulse">⏳</span> Wait for Admin to enable...
-            </div>
-            <button id="start-btn" onclick="startQuiz()" class="hidden w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl shadow-lg transition transform hover:scale-[1.02]">
-                Start Quiz (<span id="set-time-display">10</span> Mins)
-            </button>
         </div>
     </div>
 
@@ -45,15 +48,56 @@
     </div>
 
     <div id="feedback-screen" class="hidden bg-white p-8 rounded-2xl shadow-xl w-full max-w-md">
-        <h2 class="text-2xl font-bold text-slate-900 mb-2">Feedback</h2>
-        <p class="text-slate-500 mb-6 text-xs italic">Please rate the following:</p>
-        <div id="feedback-questions-container" class="space-y-8"></div>
-        <button onclick="submitFinal()" id="final-submit-btn" class="mt-8 w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 rounded-xl shadow-lg transition">Submit</button>
+        <h2 class="text-2xl font-bold text-slate-900 mb-2">Program Feedback</h2>
+        <p class="text-slate-500 mb-6 text-xs italic">Please rate the program (1: Poor to 5: Excellent)</p>
+        
+        <div class="space-y-8">
+            <div>
+                <label class="block font-bold text-sm text-slate-700 mb-3">1. Was the program informative?</label>
+                <div class="flex justify-between gap-2">
+                    <input type="radio" name="f_inf" id="inf1" value="1" class="hidden peer"><label for="inf1" class="w-10 h-10 flex items-center justify-center border-2 rounded-lg cursor-pointer font-bold transition">1</label>
+                    <input type="radio" name="f_inf" id="inf2" value="2" class="hidden peer"><label for="inf2" class="w-10 h-10 flex items-center justify-center border-2 rounded-lg cursor-pointer font-bold transition">2</label>
+                    <input type="radio" name="f_inf" id="inf3" value="3" class="hidden peer"><label for="inf3" class="w-10 h-10 flex items-center justify-center border-2 rounded-lg cursor-pointer font-bold transition">3</label>
+                    <input type="radio" name="f_inf" id="inf4" value="4" class="hidden peer"><label for="inf4" class="w-10 h-10 flex items-center justify-center border-2 rounded-lg cursor-pointer font-bold transition">4</label>
+                    <input type="radio" name="f_inf" id="inf5" value="5" class="hidden peer" checked><label for="inf5" class="w-10 h-10 flex items-center justify-center border-2 rounded-lg cursor-pointer font-bold transition">5</label>
+                </div>
+            </div>
+
+            <div>
+                <label class="block font-bold text-sm text-slate-700 mb-3">2. Was the program well-organised?</label>
+                <div class="flex justify-between gap-2">
+                    <input type="radio" name="f_org" id="org1" value="1" class="hidden peer"><label for="org1" class="w-10 h-10 flex items-center justify-center border-2 rounded-lg cursor-pointer font-bold transition">1</label>
+                    <input type="radio" name="f_org" id="org2" value="2" class="hidden peer"><label for="org2" class="w-10 h-10 flex items-center justify-center border-2 rounded-lg cursor-pointer font-bold transition">2</label>
+                    <input type="radio" name="f_org" id="org3" value="3" class="hidden peer"><label for="org3" class="w-10 h-10 flex items-center justify-center border-2 rounded-lg cursor-pointer font-bold transition">3</label>
+                    <input type="radio" name="f_org" id="org4" value="4" class="hidden peer"><label for="org4" class="w-10 h-10 flex items-center justify-center border-2 rounded-lg cursor-pointer font-bold transition">4</label>
+                    <input type="radio" name="f_org" id="org5" value="5" class="hidden peer" checked><label for="org5" class="w-10 h-10 flex items-center justify-center border-2 rounded-lg cursor-pointer font-bold transition">5</label>
+                </div>
+            </div>
+
+            <div>
+                <label class="block font-bold text-sm text-slate-700 mb-3">3. Rating of the program:</label>
+                <div class="flex justify-between gap-2">
+                    <input type="radio" name="f_rate" id="rt1" value="1" class="hidden peer"><label for="rt1" class="w-10 h-10 flex items-center justify-center border-2 rounded-lg cursor-pointer font-bold transition">1</label>
+                    <input type="radio" name="f_rate" id="rt2" value="2" class="hidden peer"><label for="rt2" class="w-10 h-10 flex items-center justify-center border-2 rounded-lg cursor-pointer font-bold transition">2</label>
+                    <input type="radio" name="f_rate" id="rt3" value="3" class="hidden peer"><label for="rt3" class="w-10 h-10 flex items-center justify-center border-2 rounded-lg cursor-pointer font-bold transition">3</label>
+                    <input type="radio" name="f_rate" id="rt4" value="4" class="hidden peer"><label for="rt4" class="w-10 h-10 flex items-center justify-center border-2 rounded-lg cursor-pointer font-bold transition">4</label>
+                    <input type="radio" name="f_rate" id="rt5" value="5" class="hidden peer" checked><label for="rt5" class="w-10 h-10 flex items-center justify-center border-2 rounded-lg cursor-pointer font-bold transition">5</label>
+                </div>
+            </div>
+
+            <button onclick="submitFinal()" id="final-submit-btn" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 rounded-xl shadow-lg transition">Submit Quiz & Feedback</button>
+        </div>
     </div>
 
     <div id="thank-you-screen" class="hidden bg-white p-12 rounded-2xl shadow-xl w-full max-w-md text-center border-t-8 border-emerald-500">
+        <div class="mb-6 text-emerald-500">
+            <svg class="w-20 h-20 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        </div>
         <h2 class="text-3xl font-black text-slate-800 mb-4">Success!</h2>
-        <p class="text-slate-600 mb-8">Your responses have been recorded.</p>
+        <p class="text-slate-600 mb-8">Your attendance and quiz responses have been recorded successfully.</p>
+        <div class="p-4 bg-slate-50 rounded-xl border text-sm text-slate-500 italic">
+            You may now close this window.
+        </div>
     </div>
 
     <script>
@@ -69,56 +113,75 @@
         const db = firebase.firestore();
 
         let questions = [], currentIndex = 0, timeLeft = 0, timerInterval, userAnswers = {};
-        let config = {};
+        let isQuizActiveInUI = false, questionLimit = 0; 
+        let preFetchedData = [];
 
-        // Real-time Settings Sync
+        window.onload = function() {
+            if (localStorage.getItem("posh_quiz_submitted") === "true") {
+                showThankYou();
+            }
+        };
+
+        async function preFetchQuestions() {
+            try {
+                const qSnap = await db.collection('questions').get();
+                preFetchedData = qSnap.docs.map(doc => ({id: doc.id, ...doc.data()}));
+            } catch (e) { console.error("Prefetch failed", e); }
+        }
+        preFetchQuestions();
+
         db.collection('settings').doc('quizStatus').onSnapshot(doc => {
             if(!doc.exists || localStorage.getItem("posh_quiz_submitted") === "true") return;
-            config = doc.data();
-            
-            // Update UI Header
-            document.getElementById('display-title').innerText = config.title || "Quiz";
-            document.getElementById('display-subtitle').innerText = config.subtitle || "";
-            document.getElementById('display-dates').innerText = config.dates || "";
-
-            // Render Input Fields
-            const inputCont = document.getElementById('input-fields-container');
-            if(inputCont.children.length === 0 && config.inputs) {
-                config.inputs.forEach(inp => {
-                    const el = document.createElement('input');
-                    el.type = "text"; el.id = `input-${inp.label}`; el.placeholder = inp.placeholder;
-                    el.className = "w-full p-4 border rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 mb-2";
-                    inputCont.appendChild(el);
-                });
-            }
-
-            // Start Button Logic
+            const d = doc.data();
             const btn = document.getElementById('start-btn'), msg = document.getElementById('wait-msg');
-            if(config.active) {
-                btn.classList.remove('hidden'); msg.classList.add('hidden');
-                document.getElementById('set-time-display').innerText = config.duration || 10;
-                if(timeLeft === 0) timeLeft = (config.duration || 10) * 60;
+            
+            questionLimit = d.questionLimit || 0;
+
+            if(d.active) {
+                btn.classList.remove('hidden'); 
+                msg.classList.add('hidden');
+                document.getElementById('set-time-display').innerText = d.duration || 10;
+                if(timeLeft === 0) timeLeft = (d.duration || 10) * 60;
             } else {
-                btn.classList.add('hidden'); msg.classList.remove('hidden');
+                btn.classList.add('hidden'); 
+                msg.classList.remove('hidden');
+                if(isQuizActiveInUI) {
+                    isQuizActiveInUI = false;
+                    endQuiz();
+                }
             }
         });
 
         async function startQuiz() {
-            // Validate inputs dynamically
-            const inputs = {};
-            config.inputs.forEach(inp => {
-                const val = document.getElementById(`input-${inp.label}`).value;
-                if(!val) return alert(`Please enter ${inp.label}`);
-                inputs[inp.label] = val;
-            });
+            const name = document.getElementById('userName').value, 
+                  roll = document.getElementById('rollNo').value,
+                  email = document.getElementById('userEmail').value;
+            if(!name || !roll || !email) return alert("Please enter your name, roll number, and email.");
 
-            const qSnap = await db.collection('questions').get();
-            questions = qSnap.docs.map(doc => doc.data());
-            if(config.questionLimit > 0) questions = questions.sort(() => 0.5 - Math.random()).slice(0, config.questionLimit);
+            if(preFetchedData.length === 0) {
+                const qSnap = await db.collection('questions').get();
+                questions = qSnap.docs.map(doc => ({id: doc.id, ...doc.data()}));
+            } else {
+                questions = [...preFetchedData];
+            }
+            
+            if(questions.length === 0) return alert("Quiz content is not ready yet.");
 
+            // Shuffle
+            for (let i = questions.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [questions[i], questions[j]] = [questions[j], questions[i]];
+            }
+
+            // Apply Admin Question Limit
+            if(questionLimit > 0 && questionLimit < questions.length) {
+                questions = questions.slice(0, questionLimit);
+            }
+            
+            isQuizActiveInUI = true;
             document.getElementById('welcome-screen').classList.add('hidden');
             document.getElementById('quiz-screen').classList.remove('hidden');
-            showQuestion();
+            showQuestion(); 
             startTimer();
         }
 
@@ -128,23 +191,38 @@
             document.getElementById('q-text').innerText = q.text;
             const container = document.getElementById('options-container');
             container.innerHTML = '';
+
             q.options.forEach(opt => {
                 const b = document.createElement('button');
-                b.className = "w-full text-left p-4 border-2 border-slate-100 rounded-xl hover:border-indigo-500 hover:bg-indigo-50 transition font-semibold";
+                b.className = "w-full text-left p-4 border-2 border-slate-100 rounded-xl hover:border-indigo-500 hover:bg-indigo-50 transition font-semibold text-slate-700 outline-none";
                 b.innerText = opt;
                 b.onclick = () => { 
                     userAnswers[currentIndex] = { selected: opt, correct: q.correct, pts: q.points }; 
-                    if(++currentIndex < questions.length) showQuestion(); else endQuiz();
+                    nextStep(); 
                 };
                 container.appendChild(b);
             });
         }
 
+        function nextStep() { 
+            currentIndex++; 
+            if(currentIndex < questions.length) showQuestion(); 
+            else {
+                isQuizActiveInUI = false;
+                endQuiz(); 
+            }
+        }
+
         function startTimer() {
             timerInterval = setInterval(() => {
-                if(--timeLeft <= 0) endQuiz();
+                timeLeft--;
                 const m = Math.floor(timeLeft/60), s = timeLeft%60;
                 document.getElementById('timer').innerText = `${m}:${s<10?'0':''}${s}`;
+                if(timeLeft <= 0) {
+                    isQuizActiveInUI = false;
+                    clearInterval(timerInterval);
+                    endQuiz();
+                }
             }, 1000);
         }
 
@@ -152,43 +230,49 @@
             clearInterval(timerInterval);
             document.getElementById('quiz-screen').classList.add('hidden');
             document.getElementById('feedback-screen').classList.remove('hidden');
-            renderFeedback();
         }
 
-        function renderFeedback() {
-            const container = document.getElementById('feedback-questions-container');
-            container.innerHTML = '';
-            config.feedbackQs.forEach((q, i) => {
-                const div = document.createElement('div');
-                div.innerHTML = `<label class="block font-bold text-sm text-slate-700 mb-3">${i+1}. ${q}</label>
-                    <div class="flex justify-between gap-2">
-                        ${[1,2,3,4,5].map(n => `<input type="radio" name="f_${i}" id="f_${i}_${n}" value="${n}" class="hidden peer" ${n===5?'checked':''}>
-                        <label for="f_${i}_${n}" class="w-10 h-10 flex items-center justify-center border-2 rounded-lg cursor-pointer font-bold transition peer-checked:bg-indigo-600 peer-checked:text-white">${n}</label>`).join('')}
-                    </div>`;
-                container.appendChild(div);
-            });
+        function showThankYou() {
+            document.getElementById('welcome-screen').classList.add('hidden');
+            document.getElementById('quiz-screen').classList.add('hidden');
+            document.getElementById('feedback-screen').classList.add('hidden');
+            document.getElementById('thank-you-screen').classList.remove('hidden');
         }
 
         async function submitFinal() {
+            const btn = document.getElementById('final-submit-btn');
+            btn.disabled = true;
+            btn.innerText = "Recording Response...";
+
             let score = 0;
-            Object.values(userAnswers).forEach(a => { if(a.selected === a.correct) score += parseInt(a.pts); });
-            
-            const feedbackResults = config.feedbackQs.map((q, i) => ({
-                question: q,
-                rating: document.querySelector(`input[name="f_${i}"]:checked`).value
-            }));
-
-            const userData = {};
-            config.inputs.forEach(inp => userData[inp.label] = document.getElementById(`input-${inp.label}`).value);
-
-            await db.collection('submissions').add({
-                ...userData,
-                score,
-                feedback: feedbackResults,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            Object.values(userAnswers).forEach(a => { 
+                if(a.selected === a.correct) score += parseInt(a.pts); 
             });
-            localStorage.setItem("posh_quiz_submitted", "true");
-            location.reload();
+            
+            const feedback = {
+                inf: document.querySelector('input[name="f_inf"]:checked').value,
+                org: document.querySelector('input[name="f_org"]:checked').value,
+                rate: document.querySelector('input[name="f_rate"]:checked').value
+            };
+
+            try {
+                await db.collection('submissions').add({
+                    name: document.getElementById('userName').value,
+                    rollNo: document.getElementById('rollNo').value,
+                    email: document.getElementById('userEmail').value,
+                    score: score,
+                    feedback: feedback,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                localStorage.setItem("posh_quiz_submitted", "true");
+                showThankYou();
+            } catch (error) {
+                console.error("Submission Error: ", error);
+                alert("Error submitting. Please try again.");
+                btn.disabled = false;
+                btn.innerText = "Submit Quiz & Feedback";
+            }
         }
     </script>
 </body>
