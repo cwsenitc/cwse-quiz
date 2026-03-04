@@ -8,97 +8,371 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
 </head>
-<body class="bg-slate-50 min-h-screen p-4 md:p-8">
+<body class="bg-slate-50 min-h-screen">
 
-    <div id="dashboard" class="max-w-7xl mx-auto space-y-8">
-        <div class="bg-white p-6 rounded-2xl shadow-sm border grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="space-y-4">
-                <h2 class="font-black text-indigo-600">EVENT DETAILS</h2>
-                <input type="text" id="set-title" placeholder="Main Title" class="w-full p-2 border rounded">
-                <input type="text" id="set-subtitle" placeholder="Subtitle (Org Name)" class="w-full p-2 border rounded">
-                <input type="text" id="set-dates" placeholder="Dates (e.g. Feb 03-05)" class="w-full p-2 border rounded">
-                <div class="flex gap-4">
-                    <label class="text-xs font-bold">Duration (Mins): <input type="number" id="set-duration" class="w-16 border p-1"></label>
-                    <label class="text-xs font-bold">Q Limit: <input type="number" id="set-limit" class="w-16 border p-1"></label>
+    <div id="loading-screen" class="flex items-center justify-center min-h-screen bg-slate-50 fixed inset-0 z-50">
+        <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600"></div>
+    </div>
+
+    <div id="login-screen" class="hidden flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white p-8 md:p-12 rounded-3xl shadow-2xl text-center w-full max-w-md">
+            <h1 class="text-3xl font-black mb-8 text-slate-800">PoSH Quiz - Admin Login</h1>
+            <button onclick="login()" class="w-full bg-indigo-600 text-white px-8 py-4 rounded-2xl font-bold shadow-lg hover:bg-indigo-700 transition">Sign in with Google</button>
+        </div>
+    </div>
+
+    <div id="dashboard" class="hidden p-4 md:p-8 max-w-7xl mx-auto">
+        <div class="flex flex-col lg:flex-row justify-between items-center mb-8 gap-6 bg-white p-6 rounded-2xl shadow-sm border">
+            <div class="flex flex-wrap justify-center md:justify-start items-center gap-4 md:gap-6">
+                <div class="flex items-center gap-2">
+                    <span class="text-xs font-bold text-slate-400">STATUS:</span>
+                    <button id="toggle-btn" onclick="toggleQuiz()" class="text-xs font-black px-6 py-2 rounded-full bg-red-500 text-white transition">OFFLINE</button>
+                </div>
+                <div class="flex items-center gap-3 border-l pl-4">
+                    <span class="text-xs font-bold text-slate-400">TIME:</span>
+                    <input type="number" id="quiz-duration-input" class="w-14 p-1 text-center border rounded font-bold text-indigo-600 text-sm">
+                    <span class="text-xs font-bold text-slate-400">LIMIT:</span>
+                    <input type="number" id="quiz-limit-input" class="w-14 p-1 text-center border rounded font-bold text-indigo-600 text-sm">
+                    <button onclick="updateSettings()" class="bg-indigo-50 text-indigo-600 px-3 py-1 rounded text-[10px] font-bold border">SET</button>
                 </div>
             </div>
-            <div class="space-y-4">
-                <h2 class="font-black text-emerald-600">FEEDBACK & INPUTS</h2>
-                <textarea id="set-inputs" placeholder="Inputs (Label,Placeholder per line)" class="w-full p-2 border rounded text-xs h-20"></textarea>
-                <textarea id="set-feedback" placeholder="Feedback Questions (One per line)" class="w-full p-2 border rounded text-xs h-20"></textarea>
-                <button onclick="updateGlobalSettings()" class="w-full bg-indigo-600 text-white font-bold py-2 rounded">Save All Settings</button>
+
+            <div class="flex flex-wrap justify-center gap-4 items-center">
+                <div class="flex items-center gap-2 bg-indigo-50 px-4 py-2 rounded-xl border border-indigo-100">
+                    <span class="text-xs font-bold text-indigo-400 uppercase">Q:</span>
+                    <span id="live-q-count" class="text-lg font-black text-indigo-600">0</span>
+                </div>
+                <div class="flex items-center gap-2 bg-emerald-50 px-4 py-2 rounded-xl border border-emerald-100">
+                    <span class="text-xs font-bold text-emerald-400 uppercase">Max Pts:</span>
+                    <span id="total-points-count" class="text-lg font-black text-emerald-600">0</span>
+                </div>
+                <div class="flex items-center gap-2 bg-amber-50 px-4 py-2 rounded-xl border border-amber-100">
+                    <span class="text-xs font-bold text-amber-400 uppercase">Subs:</span>
+                    <span id="total-submissions-count" class="text-lg font-black text-amber-600">0</span>
+                </div>
+                <button onclick="logout()" class="text-red-500 font-bold text-sm">Logout</button>
             </div>
         </div>
 
-        <div id="dynamic-stats" class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+            <div class="bg-white p-6 rounded-2xl border text-center">
+                <p class="text-xs font-bold text-slate-400 uppercase">Informative</p>
+                <h3 id="avg-inf" class="text-3xl md:text-4xl font-black text-indigo-600">0.0</h3>
             </div>
+            <div class="bg-white p-6 rounded-2xl border text-center">
+                <p class="text-xs font-bold text-slate-400 uppercase">Organised</p>
+                <h3 id="avg-org" class="text-3xl md:text-4xl font-black text-emerald-600">0.0</h3>
+            </div>
+            <div class="bg-white p-6 rounded-2xl border text-center">
+                <p class="text-xs font-bold text-slate-400 uppercase">Overall</p>
+                <h3 id="avg-rate" class="text-3xl md:text-4xl font-black text-amber-500">0.0</h3>
+            </div>
+        </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-             </div>
+            <div class="bg-white p-6 rounded-2xl shadow-sm border h-fit">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 id="form-title" class="font-bold text-lg">Manage Question</h2>
+                    <button onclick="downloadQuestionsPDF()" class="text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-1 rounded-lg font-bold border">PDF</button>
+                </div>
+                <div class="space-y-3">
+                    <input type="hidden" id="edit-id">
+                    <textarea id="q-text" placeholder="Question Text" class="w-full p-3 border rounded-xl outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+                    
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="text" id="opt-a" placeholder="Opt A" class="p-3 border rounded-xl outline-none text-sm w-full">
+                        <input type="text" id="opt-b" placeholder="Opt B" class="p-3 border rounded-xl outline-none text-sm w-full">
+                        <input type="text" id="opt-c" placeholder="Opt C" class="p-3 border rounded-xl outline-none text-sm w-full">
+                        <input type="text" id="opt-d" placeholder="Opt D" class="p-3 border rounded-xl outline-none text-sm w-full">
+                    </div>
+
+                    <select id="q-ans" class="w-full p-3 border rounded-xl outline-none text-sm font-semibold text-indigo-600">
+                        <option value="">Correct Option</option>
+                        <option value="A">Option A</option>
+                        <option value="B">Option B</option>
+                        <option value="C">Option C</option>
+                        <option value="D">Option D</option>
+                    </select>
+
+                    <input type="number" id="q-pts" value="2" placeholder="Points" class="w-full p-3 border rounded-xl outline-none">
+                    
+                    <div class="flex gap-2">
+                        <button id="submit-btn" onclick="saveQuestion()" class="flex-1 bg-indigo-600 text-white py-3 rounded-xl font-bold shadow-md">Save</button>
+                        <button id="cancel-edit" onclick="resetForm()" class="hidden bg-slate-100 text-slate-600 px-4 rounded-xl border">X</button>
+                    </div>
+                </div>
+                <div id="q-list" class="mt-8 space-y-2 overflow-y-auto max-h-[400px]"></div>
+            </div>
+
+            <div class="lg:col-span-2 bg-slate-900 p-4 md:p-6 rounded-3xl shadow-2xl border-t-4 border-indigo-500">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+                    <h2 class="font-black text-lg md:text-xl text-white tracking-tight">Leaderboard</h2>
+                    <div class="flex gap-2 w-full sm:w-auto">
+                        <button onclick="clearAllSubmissions()" class="flex-1 sm:flex-none bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-xl text-xs font-bold transition shadow-lg">Clear All</button>
+                        <button onclick="downloadCSV()" class="flex-1 sm:flex-none bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-xl text-xs font-bold transition shadow-lg">Export CSV</button>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left min-w-[500px]">
+                        <thead class="bg-slate-800/50 border-b border-slate-700 text-[10px] uppercase font-bold text-slate-400">
+                            <tr>
+                                <th class="p-4">Roll No</th>
+                                <th class="p-4">Name</th>
+                                <th class="p-4">Score</th>
+                                <th class="p-4">Time</th>
+                                <th class="p-4">Manage</th>
+                            </tr>
+                        </thead>
+                        <tbody id="leaderboard-body" class="text-sm"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
-        // ... (Firebase initialization same as your code) ...
+        const firebaseConfig = {
+            apiKey: "AIzaSyAnG3Hk8AfZoG0fcI6QMwRLReUNcEFLcz8",
+            authDomain: "cwseunnati.firebaseapp.com",
+            projectId: "cwseunnati",
+            storageBucket: "cwseunnati.firebasestorage.app",
+            messagingSenderId: "557397468479",
+            appId: "1:557397468479:web:55ff3a96b5c2b7f33c1f8a"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const auth = firebase.auth();
 
-        async function updateGlobalSettings() {
-            const inputs = document.getElementById('set-inputs').value.split('\n').map(l => ({
-                label: l.split(',')[0].trim(),
-                placeholder: l.split(',')[1]?.trim() || ""
-            })).filter(x => x.label);
+        const adminEmails = ["maddula_m241070ee@nitc.ac.in", "sbuvana@nitc.ac.in", "vrindavarma@nitc.ac.in", "manju@nitc.ac.in"];
+        let submissionUnsubscribe = null;
 
-            const feedbackQs = document.getElementById('set-feedback').value.split('\n').filter(q => q.trim());
-
-            await db.collection('settings').doc('quizStatus').set({
-                title: document.getElementById('set-title').value,
-                subtitle: document.getElementById('set-subtitle').value,
-                dates: document.getElementById('set-dates').value,
-                duration: parseInt(document.getElementById('set-duration').value),
-                questionLimit: parseInt(document.getElementById('set-limit').value),
-                inputs: inputs,
-                feedbackQs: feedbackQs,
-                active: true
-            }, { merge: true });
-            alert("Settings Updated!");
-        }
-
-        // Live stats for dynamic feedback questions
-        db.collection('submissions').onSnapshot(snap => {
-            const totals = {};
-            let count = 0;
-            
-            snap.forEach(doc => {
-                const data = doc.data();
-                if(data.feedback) {
-                    count++;
-                    data.feedback.forEach(f => {
-                        totals[f.question] = (totals[f.question] || 0) + parseInt(f.rating);
-                    });
-                }
-            });
-
-            const statsDiv = document.getElementById('dynamic-stats');
-            statsDiv.innerHTML = '';
-            for (const [q, total] of Object.entries(totals)) {
-                statsDiv.innerHTML += `
-                <div class="bg-white p-4 rounded-xl border text-center">
-                    <p class="text-[10px] font-bold text-slate-400 uppercase truncate">${q}</p>
-                    <h3 class="text-2xl font-black text-indigo-600">${(total/count).toFixed(1)}</h3>
-                </div>`;
+        auth.onAuthStateChanged(user => {
+            document.getElementById('loading-screen').classList.add('hidden');
+            if (user && adminEmails.includes(user.email)) {
+                showDashboard();
+            } else {
+                showLogin();
             }
         });
 
-        // Initialize Settings in Form
-        db.collection('settings').doc('quizStatus').get().then(doc => {
-            const d = doc.data();
-            document.getElementById('set-title').value = d.title || "";
-            document.getElementById('set-subtitle').value = d.subtitle || "";
-            document.getElementById('set-dates').value = d.dates || "";
-            document.getElementById('set-duration').value = d.duration || 10;
-            document.getElementById('set-limit').value = d.questionLimit || 0;
-            document.getElementById('set-inputs').value = d.inputs.map(i => `${i.label},${i.placeholder}`).join('\n');
-            document.getElementById('set-feedback').value = d.feedbackQs.join('\n');
-        });
+        function login() {
+            const provider = new firebase.auth.GoogleAuthProvider();
+            auth.signInWithPopup(provider).then(res => {
+                if(adminEmails.includes(res.user.email)) {
+                    showDashboard();
+                } else { 
+                    alert("Unauthorized!"); 
+                    auth.signOut(); 
+                }
+            }).catch(err => alert("Login failed"));
+        }
+
+        function showDashboard() {
+            document.getElementById('login-screen').classList.add('hidden');
+            document.getElementById('dashboard').classList.remove('hidden');
+            setupLiveListeners();
+        }
+
+        function showLogin() {
+            document.getElementById('login-screen').classList.remove('hidden');
+            document.getElementById('dashboard').classList.add('hidden');
+        }
+
+        async function saveQuestion() {
+            const id = document.getElementById('edit-id').value;
+            const text = document.getElementById('q-text').value;
+            const opts = [
+                document.getElementById('opt-a').value,
+                document.getElementById('opt-b').value,
+                document.getElementById('opt-c').value,
+                document.getElementById('opt-d').value
+            ];
+            const ansKey = document.getElementById('q-ans').value;
+            const correct = opts[ansKey === 'A' ? 0 : (ansKey === 'B' ? 1 : (ansKey === 'C' ? 2 : 3))];
+            const pts = document.getElementById('q-pts').value;
+
+            if(!text || !opts[0] || !ansKey) return alert("Missing data!");
+
+            const data = { text, options: opts, correct, points: parseInt(pts) || 2 };
+            if(id) await db.collection('questions').doc(id).update(data);
+            else await db.collection('questions').add(data);
+            resetForm();
+        }
+
+        function editQuestion(id, data) {
+            document.getElementById('edit-id').value = id;
+            document.getElementById('q-text').value = data.text;
+            document.getElementById('opt-a').value = data.options[0];
+            document.getElementById('opt-b').value = data.options[1];
+            document.getElementById('opt-c').value = data.options[2];
+            document.getElementById('opt-d').value = data.options[3];
+            document.getElementById('q-ans').value = data.correct === data.options[0] ? 'A' : (data.correct === data.options[1] ? 'B' : (data.correct === data.options[2] ? 'C' : 'D'));
+            document.getElementById('q-pts').value = data.points;
+            document.getElementById('cancel-edit').classList.remove('hidden');
+            document.getElementById('submit-btn').innerText = "Update";
+        }
+
+        function resetForm() {
+            document.getElementById('edit-id').value = "";
+            document.getElementById('q-text').value = "";
+            document.getElementById('opt-a').value = "";
+            document.getElementById('opt-b').value = "";
+            document.getElementById('opt-c').value = "";
+            document.getElementById('opt-d').value = "";
+            document.getElementById('q-ans').value = "";
+            document.getElementById('q-pts').value = "2";
+            document.getElementById('cancel-edit').classList.add('hidden');
+            document.getElementById('submit-btn').innerText = "Save";
+        }
+
+        function setupLiveListeners() {
+            db.collection('settings').doc('quizStatus').onSnapshot(doc => {
+                if(!doc.exists) return;
+                const d = doc.data();
+                const btn = document.getElementById('toggle-btn');
+                btn.innerText = d.active ? "ACTIVE" : "OFFLINE";
+                btn.className = d.active ? "text-xs font-black px-6 py-2 rounded-full bg-emerald-500 text-white shadow-lg" : "text-xs font-black px-6 py-2 rounded-full bg-red-500 text-white";
+                document.getElementById('quiz-duration-input').value = d.duration || 10;
+                document.getElementById('quiz-limit-input').value = d.questionLimit || 0;
+            });
+
+            if(submissionUnsubscribe) submissionUnsubscribe();
+            
+            submissionUnsubscribe = db.collection('submissions')
+                .orderBy('score', 'desc')
+                .orderBy('timestamp', 'asc')
+                .onSnapshot(snap => {
+                    let tInf = 0, tOrg = 0, tRate = 0, count = 0;
+                    document.getElementById('total-submissions-count').innerText = snap.size;
+                    const body = document.getElementById('leaderboard-body');
+                    body.innerHTML = '';
+                    
+                    snap.forEach(doc => {
+                        const s = doc.data();
+                        if(s.feedback) { 
+                            tInf += (parseInt(s.feedback.inf) || 0); 
+                            tOrg += (parseInt(s.feedback.org) || 0); 
+                            tRate += (parseInt(s.feedback.rate) || 0); 
+                            count++; 
+                        }
+                        
+                        const timeStr = s.timestamp ? s.timestamp.toDate().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'}) : '...';
+                        
+                        body.innerHTML += `
+                            <tr class="border-b border-slate-800 hover:bg-slate-800/30 transition">
+                                <td class="p-4 font-mono text-indigo-400">${s.rollNo}</td>
+                                <td class="p-4 font-bold text-white">${s.name}</td>
+                                <td class="p-4 text-emerald-400 font-black text-lg">${s.score}</td>
+                                <td class="p-4 text-slate-500 text-xs">${timeStr}</td>
+                                <td class="p-4"><button onclick="deleteEntry('${doc.id}')" class="text-red-500 hover:text-red-300 font-bold text-[10px] uppercase">Clear</button></td>
+                            </tr>`;
+                    });
+                    
+                    if(count > 0) {
+                        document.getElementById('avg-inf').innerText = (tInf/count).toFixed(1);
+                        document.getElementById('avg-org').innerText = (tOrg/count).toFixed(1);
+                        document.getElementById('avg-rate').innerText = (tRate/count).toFixed(1);
+                    } else {
+                        document.getElementById('avg-inf').innerText = "0.0";
+                        document.getElementById('avg-org').innerText = "0.0";
+                        document.getElementById('avg-rate').innerText = "0.0";
+                    }
+                }, err => {
+                    console.error("Sorting error", err);
+                });
+
+            db.collection('questions').onSnapshot(snap => {
+                const list = document.getElementById('q-list');
+                document.getElementById('live-q-count').innerText = snap.size;
+                let totalPts = 0;
+                let qIndex = 1;
+                list.innerHTML = '';
+                snap.forEach(doc => {
+                    const q = doc.data();
+                    totalPts += (parseInt(q.points) || 0);
+                    const div = document.createElement('div');
+                    div.className = "p-3 bg-slate-50 border rounded-xl flex justify-between items-center text-xs gap-4";
+                    div.innerHTML = `<span class="flex-1 font-bold"><span class="text-slate-400 mr-2">${qIndex}.</span>${q.text} <span class="text-indigo-400">(${q.points}p)</span></span><div class="flex gap-2 flex-shrink-0"><button onclick='editQuestion("${doc.id}", ${JSON.stringify(q)})' class="text-indigo-600 font-bold">Edit</button><button onclick='deleteQ("${doc.id}")' class="text-red-500 font-bold">X</button></div>`;
+                    list.appendChild(div);
+                    qIndex++;
+                });
+                document.getElementById('total-points-count').innerText = totalPts;
+            });
+        }
+
+        async function toggleQuiz() {
+            const btn = document.getElementById('toggle-btn');
+            await db.collection('settings').doc('quizStatus').update({ active: btn.innerText === "OFFLINE" });
+        }
+
+        async function updateSettings() {
+            const mins = document.getElementById('quiz-duration-input').value;
+            const limit = document.getElementById('quiz-limit-input').value;
+            await db.collection('settings').doc('quizStatus').update({ 
+                duration: parseInt(mins), 
+                questionLimit: parseInt(limit) || 0 
+            });
+            alert("Settings updated!");
+        }
+
+        async function deleteQ(id) { if(confirm("Delete?")) await db.collection('questions').doc(id).delete(); }
+        async function deleteEntry(id) { if(confirm("Clear?")) await db.collection('submissions').doc(id).delete(); }
+
+        async function clearAllSubmissions() {
+            if(confirm("Are you absolutely sure you want to DELETE ALL student responses?")) {
+                const snap = await db.collection('submissions').get();
+                const batch = db.batch();
+                snap.forEach(doc => batch.delete(doc.ref));
+                await batch.commit();
+                alert("All responses cleared.");
+            }
+        }
+
+        async function downloadCSV() {
+            const snap = await db.collection('submissions')
+                .orderBy('score', 'desc')
+                .orderBy('timestamp', 'asc')
+                .get();
+                
+            let csv = "Rank,Name,RollNo,Email,Score,SubmittedAt,InfRating,OrgRating,OverallRating\n";
+            let rank = 1;
+            snap.forEach(doc => {
+                const s = doc.data();
+                const timeStr = s.timestamp ? s.timestamp.toDate().toLocaleString('en-GB').replace(',', '') : 'N/A';
+                csv += `${rank++},"${s.name}","${s.rollNo}","${s.email || 'N/A'}",${s.score},"${timeStr}",${s.feedback ? s.feedback.inf : 0},${s.feedback ? s.feedback.org : 0},${s.feedback ? s.feedback.rate : 0}\n`;
+            });
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a'); a.href = url; a.download = 'PoSH_Results_Ranked.csv'; a.click();
+        }
+
+        async function downloadQuestionsPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            const snap = await db.collection('questions').get();
+            doc.setFontSize(18);
+            doc.text("PoSH Quiz - Question Bank", 14, 20);
+            const tableData = [];
+            let i = 1;
+            snap.forEach(qDoc => {
+                const q = qDoc.data();
+                const optionsStr = `A: ${q.options[0]}\nB: ${q.options[1]}\nC: ${q.options[2]}\nD: ${q.options[3]}`;
+                tableData.push([i++, q.text, optionsStr, q.correct, q.points]);
+            });
+            doc.autoTable({
+                startY: 30,
+                head: [['#', 'Question', 'Options', 'Ans', 'Pts']],
+                body: tableData,
+                theme: 'striped',
+                headStyles: { fillColor: [79, 70, 229] }
+            });
+            doc.save('PoSH_Question_Bank.pdf');
+        }
+
+        function logout() { auth.signOut(); }
     </script>
 </body>
 </html>
