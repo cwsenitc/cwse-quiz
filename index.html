@@ -113,10 +113,9 @@
         const db = firebase.firestore();
 
         let questions = [], currentIndex = 0, timeLeft = 0, timerInterval, userAnswers = {};
-        let isQuizActiveInUI = false; 
+        let isQuizActiveInUI = false, questionLimit = 0; 
         let preFetchedData = [];
 
-        // ON LOAD CHECK: Ensure user hasn't already submitted
         window.onload = function() {
             if (localStorage.getItem("posh_quiz_submitted") === "true") {
                 showThankYou();
@@ -136,6 +135,8 @@
             const d = doc.data();
             const btn = document.getElementById('start-btn'), msg = document.getElementById('wait-msg');
             
+            questionLimit = d.questionLimit || 0;
+
             if(d.active) {
                 btn.classList.remove('hidden'); 
                 msg.classList.add('hidden');
@@ -166,9 +167,15 @@
             
             if(questions.length === 0) return alert("Quiz content is not ready yet.");
 
+            // Shuffle
             for (let i = questions.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
                 [questions[i], questions[j]] = [questions[j], questions[i]];
+            }
+
+            // Apply Admin Question Limit
+            if(questionLimit > 0 && questionLimit < questions.length) {
+                questions = questions.slice(0, questionLimit);
             }
             
             isQuizActiveInUI = true;
@@ -258,7 +265,6 @@
                     timestamp: firebase.firestore.FieldValue.serverTimestamp()
                 });
                 
-                // Set Local Storage flag
                 localStorage.setItem("posh_quiz_submitted", "true");
                 showThankYou();
             } catch (error) {
