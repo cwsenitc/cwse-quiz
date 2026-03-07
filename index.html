@@ -31,9 +31,12 @@
             <input type="email" id="userEmail" placeholder="Email ID" class="w-full p-4 border rounded-xl outline-none focus:ring-2 focus:ring-indigo-500">
             
             <div id="status-box" class="pt-4 text-center">
+                <div id="time-status-msg" class="mb-4 p-3 rounded-xl text-sm font-bold hidden"></div>
+
                 <div id="wait-msg" class="p-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-700 font-medium">
-                    <span class="animate-pulse">🤔</span> Currently not accepting responses!
+                    <span class="animate-pulse">🤔</span> Checking quiz schedule...
                 </div>
+                
                 <button id="start-btn" onclick="startQuiz()" class="hidden w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-4 rounded-xl shadow-lg transition">
                     Start Quiz (<span id="set-time-display">10</span> Mins)
                 </button>
@@ -53,9 +56,7 @@
         </div>
         <div id="quiz-content" class="mb-10 min-h-[150px]">
             <h2 id="q-text" class="text-xl font-bold text-slate-800 mb-6 leading-tight"></h2>
-            
             <div id="mcq-container" class="grid gap-3"></div>
-            
             <div id="typing-container" class="hidden space-y-4">
                 <input type="text" id="typing-input" placeholder="Type your answer here..." class="w-full p-4 border-2 border-slate-200 rounded-xl outline-none focus:border-indigo-500 font-semibold text-lg">
                 <button id="typing-submit-btn" onclick="submitTypedAnswer()" class="w-full bg-slate-800 text-white py-4 rounded-xl font-bold transition hover:bg-slate-700">Next Question</button>
@@ -73,14 +74,9 @@
         </div>
         <h2 class="text-3xl font-black text-slate-800 mb-2">Submitted!</h2>
         <p class="text-slate-600 mb-6">Thank you for participating! Your responses have been recorded successfully.</p>
-        
         <div class="bg-indigo-50 rounded-2xl p-6 mb-8 border border-indigo-100">
             <p class="text-indigo-400 text-xs font-bold uppercase tracking-widest mb-1">Your Final Score</p>
             <div class="text-5xl font-black text-indigo-600" id="display-final-score">0</div>
-        </div>
-
-        <div class="p-4 bg-slate-50 rounded-xl border text-sm text-slate-500 italic">
-            You may now close this window.
         </div>
     </div>
 
@@ -98,27 +94,59 @@
 
         let questions = [], currentIndex = 0, timeLeft = 0, timerInterval, userAnswers = {};
         let isQuizActiveInUI = false, questionLimit = 0; 
+        let scheduleInterval;
 
         window.onload = () => { 
             if (localStorage.getItem("cwse_quiz_submitted") === "true") {
-                const savedScore = localStorage.getItem("cwse_quiz_score") || "0";
-                showThankYou(savedScore);
+                showThankYou(localStorage.getItem("cwse_quiz_score") || "0");
             }
         };
 
+        // Listen for both Manual Toggle and Scheduled Times
         db.collection('settings').doc('quizStatus').onSnapshot(doc => {
             if(!doc.exists || localStorage.getItem("cwse_quiz_submitted") === "true") return;
             const d = doc.data();
-            const btn = document.getElementById('start-btn'), msg = document.getElementById('wait-msg');
-            questionLimit = d.questionLimit || 0;
-            if(d.active) {
-                btn.classList.remove('hidden'); msg.classList.add('hidden');
-                document.getElementById('set-time-display').innerText = d.duration || 10;
-                if(timeLeft === 0) timeLeft = (d.duration || 10) * 60;
-            } else {
-                btn.classList.add('hidden'); msg.classList.remove('hidden');
-                if(isQuizActiveInUI) submitFinal();
-            }
+            
+            if (scheduleInterval) clearInterval(scheduleInterval);
+
+            scheduleInterval = setInterval(() => {
+                const now = new Date().getTime();
+                const startTime = d.startTime ? new Date(d.startTime).getTime() : 0;
+                const endTime = d.endTime ? new Date(d.endTime).getTime() : 0;
+                
+                const btn = document.getElementById('start-btn');
+                const msg = document.getElementById('wait-msg');
+                const timeStatus = document.getElementById('time-status-msg');
+
+                questionLimit = d.questionLimit || 0;
+
+                // Scenario 1: Quiz is manually OFF or time hasn't reached yet
+                if (!d.active || (startTime && now < startTime)) {
+                    btn.classList.add('hidden');
+                    msg.classList.remove('hidden');
+                    timeStatus.classList.remove('hidden');
+                    timeStatus.className = "mb-4 p-3 rounded-xl text-sm font-bold bg-amber-100 text-amber-700";
+                    timeStatus.innerText = startTime ? `Starts at: ${new Date(startTime).toLocaleString()}` : "Not accepting responses";
+                    if(isQuizActiveInUI) submitFinal();
+                } 
+                // Scenario 2: Time has passed
+                else if (endTime && now > endTime) {
+                    btn.classList.add('hidden');
+                    msg.classList.remove('hidden');
+                    timeStatus.classList.remove('hidden');
+                    timeStatus.className = "mb-4 p-3 rounded-xl text-sm font-bold bg-red-100 text-red-700";
+                    timeStatus.innerText = "Quiz has ended.";
+                    if(isQuizActiveInUI) submitFinal(); // Auto-submit if time runs out mid-quiz
+                }
+                // Scenario 3: Quiz is ACTIVE and within time window
+                else {
+                    btn.classList.remove('hidden');
+                    msg.classList.add('hidden');
+                    timeStatus.classList.add('hidden');
+                    document.getElementById('set-time-display').innerText = d.duration || 10;
+                    if(timeLeft === 0) timeLeft = (d.duration || 10) * 60;
+                }
+            }, 1000);
         });
 
         async function startQuiz() {
@@ -129,7 +157,6 @@
 
             const qSnap = await db.collection('questions').get();
             questions = qSnap.docs.map(doc => ({id: doc.id, ...doc.data()}));
-            
             questions.sort(() => Math.random() - 0.5);
             if(questionLimit > 0) questions = questions.slice(0, questionLimit);
             
@@ -143,7 +170,6 @@
         function showQuestion() {
             const q = questions[currentIndex];
             const isLast = (currentIndex === questions.length - 1);
-            
             document.getElementById('q-count').innerText = `Question ${currentIndex + 1} of ${questions.length}`;
             document.getElementById('q-text').innerText = q.text;
             
@@ -173,16 +199,13 @@
         }
 
         function submitTypedAnswer() {
-            const val = document.getElementById('typing-input').value;
-            recordAnswer(val);
+            recordAnswer(document.getElementById('typing-input').value);
             nextStep();
         }
 
         function recordAnswer(val) {
             const q = questions[currentIndex];
-            const cleanUser = val.trim().toLowerCase();
-            const cleanCorrect = q.correct.trim().toLowerCase();
-            const isCorrect = cleanUser === cleanCorrect;
+            const isCorrect = val.trim().toLowerCase() === q.correct.trim().toLowerCase();
             userAnswers[currentIndex] = { pts: isCorrect ? q.points : 0 };
         }
 
@@ -217,13 +240,12 @@
                     score: totalScore,
                     timestamp: firebase.firestore.FieldValue.serverTimestamp()
                 });
-                
                 localStorage.setItem("cwse_quiz_submitted", "true");
                 localStorage.setItem("cwse_quiz_score", totalScore);
                 showThankYou(totalScore);
             } catch (e) { 
                 console.error(e);
-                alert("Error saving response. Please check your connection."); 
+                alert("Submission failed. Your score: " + totalScore); 
             }
         }
 
