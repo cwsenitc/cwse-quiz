@@ -107,7 +107,7 @@
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div class="bg-white p-6 rounded-3xl shadow-sm border h-fit">
                     <div class="flex justify-between items-center mb-6">
-                        <h2 class="font-bold text-slate-800">Manage Questions</h2>
+                        <h2 id="form-title" class="font-bold text-slate-800">Add Question</h2>
                         <button onclick="downloadQuestionsPDF()" class="text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-1 rounded-lg font-bold border">Export PDF</button>
                     </div>
                     <div class="space-y-3">
@@ -173,7 +173,6 @@
     </div>
 
     <script>
-        // CONFIG
         const firebaseConfig = {
             apiKey: "AIzaSyAnG3Hk8AfZoG0fcI6QMwRLReUNcEFLcz8",
             authDomain: "cwseunnati.firebaseapp.com",
@@ -189,17 +188,11 @@
         const adminEmails = ["maddula_m241070ee@nitc.ac.in", "sbuvana@nitc.ac.in", "vrindavarma@nitc.ac.in", "manju@nitc.ac.in"];
         let submissionUnsubscribe = null;
 
-        // Populate Dropdowns
         function populateTimeDropdowns() {
             const hhs = [document.getElementById('start-hh'), document.getElementById('end-hh')];
             const mms = [document.getElementById('start-mm'), document.getElementById('end-mm')];
-            
-            hhs.forEach(sel => {
-                for(let i=1; i<=12; i++) sel.add(new Option(i < 10 ? '0'+i : i, i));
-            });
-            mms.forEach(sel => {
-                for(let i=0; i<60; i+=5) sel.add(new Option(i < 10 ? '0'+i : i, i < 10 ? '0'+i : i));
-            });
+            hhs.forEach(sel => { for(let i=1; i<=12; i++) sel.add(new Option(i < 10 ? '0'+i : i, i)); });
+            mms.forEach(sel => { for(let i=0; i<60; i+=5) sel.add(new Option(i < 10 ? '0'+i : i, i < 10 ? '0'+i : i)); });
         }
         populateTimeDropdowns();
 
@@ -228,13 +221,11 @@
             document.getElementById('dashboard').classList.add('hidden');
         }
 
-        // SETTINGS SYNC
         async function updateSettings() {
             const sDate = document.getElementById('start-date').value;
             const sHH = document.getElementById('start-hh').value;
             const sMM = document.getElementById('start-mm').value;
             const sAP = document.getElementById('start-ap').value;
-
             const eDate = document.getElementById('end-date').value;
             const eHH = document.getElementById('end-hh').value;
             const eMM = document.getElementById('end-mm').value;
@@ -242,7 +233,6 @@
 
             if(!sDate || !eDate) return alert("Please pick both dates!");
 
-            // Format for machine reading (ISO style strings)
             const formatTime = (d, h, m, ap) => {
                 let hh = parseInt(h);
                 if(ap === "PM" && hh < 12) hh += 12;
@@ -256,89 +246,47 @@
                 startTime: formatTime(sDate, sHH, sMM, sAP),
                 endTime: formatTime(eDate, eHH, eMM, eAP)
             });
-            alert("Settings synchronized with live quiz!");
+            alert("Settings synced!");
         }
 
-        function setupLiveListeners() {
-            db.collection('settings').doc('quizStatus').onSnapshot(doc => {
-                if(!doc.exists) return;
-                const d = doc.data();
-                const btn = document.getElementById('toggle-btn');
-                btn.innerText = d.active ? "ACTIVE" : "OFFLINE";
-                btn.className = d.active ? "text-[10px] font-black px-4 py-1.5 rounded-full bg-emerald-500 text-white shadow-lg" : "text-[10px] font-black px-4 py-1.5 rounded-full bg-red-500 text-white shadow-sm";
-                
-                document.getElementById('quiz-duration-input').value = d.duration || 10;
-                document.getElementById('quiz-limit-input').value = d.questionLimit || 0;
+        function editQuestion(id, data) {
+            document.getElementById('edit-id').value = id;
+            document.getElementById('q-text').value = data.text;
+            document.getElementById('q-type').value = data.type || 'mcq';
+            document.getElementById('q-pts').value = data.points;
+            
+            handleTypeChange();
 
-                // Load existing times into manual pickers
-                const parseTime = (str, dateId, hhId, mmId, apId) => {
-                    if(!str) return;
-                    const [date, fullTime] = str.split('T');
-                    document.getElementById(dateId).value = date;
-                    let [hh, mm] = fullTime.split(':');
-                    hh = parseInt(hh);
-                    const ap = hh >= 12 ? "PM" : "AM";
-                    let hDisplay = hh % 12 || 12;
-                    document.getElementById(hhId).value = hDisplay;
-                    document.getElementById(mmId).value = mm;
-                    document.getElementById(apId).value = ap;
-                };
-                parseTime(d.startTime, 'start-date', 'start-hh', 'start-mm', 'start-ap');
-                parseTime(d.endTime, 'end-date', 'end-hh', 'end-mm', 'end-ap');
-            });
+            if(data.type === 'mcq') {
+                document.getElementById('opt-a').value = data.options[0];
+                document.getElementById('opt-b').value = data.options[1];
+                document.getElementById('opt-c').value = data.options[2];
+                document.getElementById('opt-d').value = data.options[3];
+                const idx = data.options.indexOf(data.correct);
+                document.getElementById('q-ans-mcq').value = idx === 0 ? 'A' : (idx === 1 ? 'B' : (idx === 2 ? 'C' : 'D'));
+            } else {
+                document.getElementById('q-ans-typing').value = data.correct;
+            }
 
-            if(submissionUnsubscribe) submissionUnsubscribe();
-            submissionUnsubscribe = db.collection('submissions').orderBy('score', 'desc').orderBy('timestamp', 'asc').onSnapshot(snap => {
-                document.getElementById('total-submissions-count').innerText = snap.size;
-                const body = document.getElementById('leaderboard-body');
-                body.innerHTML = '';
-                let rank = 1;
-                snap.forEach(doc => {
-                    const s = doc.data();
-                    const timeStr = s.timestamp ? s.timestamp.toDate().toLocaleTimeString('en-IN', {hour: '2-digit', minute:'2-digit', hour12: true}) : '...';
-                    body.innerHTML += `
-                        <tr class="hover:bg-slate-50 transition">
-                            <td class="p-4 font-black text-slate-300 text-xl">#${rank++}</td>
-                            <td class="p-4">
-                                <p class="font-bold text-slate-800">${s.name}</p>
-                                <p class="text-[10px] text-indigo-500 font-mono font-bold">${s.rollNo}</p>
-                            </td>
-                            <td class="p-4 text-center"><span class="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-lg font-black">${s.score}</span></td>
-                            <td class="p-4 text-slate-400 text-[10px] font-bold uppercase">${timeStr}</td>
-                            <td class="p-4 text-right"><button onclick="deleteEntry('${doc.id}')" class="text-red-400 hover:text-red-600 font-bold text-[10px] uppercase">Remove</button></td>
-                        </tr>`;
-                });
-            });
-
-            db.collection('questions').onSnapshot(snap => {
-                const list = document.getElementById('q-list');
-                document.getElementById('live-q-count').innerText = snap.size;
-                let totalPts = 0, qIndex = 1;
-                list.innerHTML = '';
-                snap.forEach(doc => {
-                    const q = doc.data();
-                    totalPts += (parseInt(q.points) || 0);
-                    const div = document.createElement('div');
-                    div.className = "p-3 bg-slate-50 border border-slate-100 rounded-2xl flex justify-between items-center text-[11px] gap-4 mb-2 hover:border-indigo-200 transition";
-                    div.innerHTML = `<span class="flex-1 font-bold text-slate-700"><span class="text-indigo-400 mr-2">#${qIndex}</span>${q.text}</span><div class="flex gap-2 flex-shrink-0"><button onclick='editQuestion("${doc.id}", ${JSON.stringify(q)})' class="text-indigo-600 font-black">EDIT</button><button onclick='deleteQ("${doc.id}")' class="text-red-500 font-black">X</button></div>`;
-                    list.appendChild(div);
-                    qIndex++;
-                });
-                document.getElementById('total-points-count').innerText = totalPts;
-            });
+            document.getElementById('form-title').innerText = "Edit Question";
+            document.getElementById('submit-btn').innerText = "Update Question";
+            document.getElementById('cancel-edit').classList.remove('hidden');
         }
 
-        // OTHER UTILS (Keep your existing toggleQuiz, deleteQ, saveQuestion logic)
-        async function toggleQuiz() {
-            const btn = document.getElementById('toggle-btn');
-            await db.collection('settings').doc('quizStatus').update({ active: btn.innerText === "OFFLINE" });
+        function resetForm() {
+            document.getElementById('edit-id').value = "";
+            document.getElementById('q-text').value = "";
+            document.getElementById('q-ans-typing').value = "";
+            document.getElementById('opt-a').value = ""; document.getElementById('opt-b').value = "";
+            document.getElementById('opt-c').value = ""; document.getElementById('opt-d').value = "";
+            document.getElementById('q-ans-mcq').value = "";
+            document.getElementById('q-pts').value = "2";
+            document.getElementById('form-title').innerText = "Add Question";
+            document.getElementById('submit-btn').innerText = "Save Question";
+            document.getElementById('cancel-edit').classList.add('hidden');
+            handleTypeChange();
         }
-        function handleTypeChange() {
-            const type = document.getElementById('q-type').value;
-            document.getElementById('mcq-options').classList.toggle('hidden', type === 'typing');
-            document.getElementById('ans-mcq-wrapper').classList.toggle('hidden', type === 'typing');
-            document.getElementById('ans-typing-wrapper').classList.toggle('hidden', type === 'mcq');
-        }
+
         async function saveQuestion() {
             const id = document.getElementById('edit-id').value;
             const type = document.getElementById('q-type').value;
@@ -358,26 +306,81 @@
                 data.correct = ans;
                 data.options = [];
             }
+
             if(id) await db.collection('questions').doc(id).update(data);
             else await db.collection('questions').add(data);
             resetForm();
         }
-        function resetForm() {
-            document.getElementById('edit-id').value = ""; document.getElementById('q-text').value = "";
-            document.getElementById('q-ans-typing').value = ""; document.getElementById('opt-a').value = "";
-            document.getElementById('opt-b').value = ""; document.getElementById('opt-c').value = "";
-            document.getElementById('opt-d').value = ""; document.getElementById('q-ans-mcq').value = "";
-            document.getElementById('q-pts').value = "2"; document.getElementById('cancel-edit').classList.add('hidden');
-            document.getElementById('submit-btn').innerText = "Save Question";
+
+        function handleTypeChange() {
+            const type = document.getElementById('q-type').value;
+            document.getElementById('mcq-options').classList.toggle('hidden', type === 'typing');
+            document.getElementById('ans-mcq-wrapper').classList.toggle('hidden', type === 'typing');
+            document.getElementById('ans-typing-wrapper').classList.toggle('hidden', type === 'mcq');
         }
+
+        function setupLiveListeners() {
+            db.collection('settings').doc('quizStatus').onSnapshot(doc => {
+                if(!doc.exists) return;
+                const d = doc.data();
+                const btn = document.getElementById('toggle-btn');
+                btn.innerText = d.active ? "ACTIVE" : "OFFLINE";
+                btn.className = d.active ? "text-[10px] font-black px-4 py-1.5 rounded-full bg-emerald-500 text-white shadow-lg" : "text-[10px] font-black px-4 py-1.5 rounded-full bg-red-500 text-white";
+                document.getElementById('quiz-duration-input').value = d.duration || 10;
+                document.getElementById('quiz-limit-input').value = d.questionLimit || 0;
+            });
+
+            submissionUnsubscribe = db.collection('submissions').orderBy('score', 'desc').orderBy('timestamp', 'asc').onSnapshot(snap => {
+                document.getElementById('total-submissions-count').innerText = snap.size;
+                const body = document.getElementById('leaderboard-body');
+                body.innerHTML = '';
+                let rank = 1;
+                snap.forEach(doc => {
+                    const s = doc.data();
+                    const timeStr = s.timestamp ? s.timestamp.toDate().toLocaleTimeString('en-IN', {hour: '2-digit', minute:'2-digit', hour12: true}) : '...';
+                    body.innerHTML += `
+                        <tr class="hover:bg-slate-50 transition">
+                            <td class="p-4 font-black text-slate-300 text-xl">#${rank++}</td>
+                            <td class="p-4"><p class="font-bold text-slate-800">${s.name}</p><p class="text-[10px] text-indigo-500 font-mono font-bold">${s.rollNo}</p></td>
+                            <td class="p-4 text-center"><span class="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-lg font-black">${s.score}</span></td>
+                            <td class="p-4 text-slate-400 text-[10px] font-bold uppercase">${timeStr}</td>
+                            <td class="p-4 text-right"><button onclick="deleteEntry('${doc.id}')" class="text-red-400 hover:text-red-600 font-bold text-[10px] uppercase">Remove</button></td>
+                        </tr>`;
+                });
+            });
+
+            db.collection('questions').onSnapshot(snap => {
+                const list = document.getElementById('q-list');
+                document.getElementById('live-q-count').innerText = snap.size;
+                let totalPts = 0, qIndex = 1;
+                list.innerHTML = '';
+                snap.forEach(doc => {
+                    const q = doc.data();
+                    totalPts += (parseInt(q.points) || 0);
+                    const div = document.createElement('div');
+                    div.className = "p-3 bg-slate-50 border border-slate-100 rounded-2xl flex justify-between items-center text-[11px] gap-4 mb-2 hover:border-indigo-200 transition";
+                    div.innerHTML = `<span class="flex-1 font-bold text-slate-700"><span class="text-indigo-400 mr-2">#${qIndex}</span>${q.text}</span><div class="flex gap-2 flex-shrink-0"><button onclick='editQuestion("${doc.id}", ${JSON.stringify(q).replace(/'/g, "&apos;")})' class="text-indigo-600 font-black">EDIT</button><button onclick='deleteQ("${doc.id}")' class="text-red-500 font-black">X</button></div>`;
+                    list.appendChild(div);
+                    qIndex++;
+                });
+                document.getElementById('total-points-count').innerText = totalPts;
+            });
+        }
+
+        async function toggleQuiz() {
+            const btn = document.getElementById('toggle-btn');
+            await db.collection('settings').doc('quizStatus').update({ active: btn.innerText === "OFFLINE" });
+        }
+
         async function deleteQ(id) { if(confirm("Delete?")) await db.collection('questions').doc(id).delete(); }
         async function deleteEntry(id) { if(confirm("Clear?")) await db.collection('submissions').doc(id).delete(); }
         async function clearAllSubmissions() {
-            if(confirm("DELETE ALL student responses?")) {
+            if(confirm("DELETE ALL?")) {
                 const snap = await db.collection('submissions').get();
                 const batch = db.batch(); snap.forEach(doc => batch.delete(doc.ref)); await batch.commit();
             }
         }
+
         async function downloadCSV() {
             const snap = await db.collection('submissions').orderBy('score', 'desc').orderBy('timestamp', 'asc').get();
             let csv = "Rank,Name,RollNo,Score,Time\n"; let r = 1;
@@ -389,19 +392,44 @@
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a'); a.href = url; a.download = 'Quiz_Results.csv'; a.click();
         }
+
         async function downloadQuestionsPDF() {
-            const { jsPDF } = window.jspdf; const doc = new jsPDF();
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
             const snap = await db.collection('questions').get();
-            doc.setFontSize(18); doc.text("CWSE Question Bank", 14, 20);
-            const tableData = []; let i = 1;
+            
+            doc.setFontSize(18);
+            doc.setTextColor(30, 41, 59);
+            doc.text("CWSE Quiz - Question Bank", 14, 20);
+            
+            doc.setFontSize(10);
+            doc.setTextColor(100);
+            doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 27);
+
+            const tableData = [];
+            let i = 1;
             snap.forEach(qDoc => {
                 const q = qDoc.data();
-                const typeInfo = q.type === 'typing' ? '[Typing]' : `A: ${q.options[0]} B: ${q.options[1]} C: ${q.options[2]} D: ${q.options[3]}`;
-                tableData.push([i++, q.text, typeInfo, q.correct, q.points]);
+                const options = q.type === 'typing' ? 'N/A (Short Answer)' : q.options.join(', ');
+                tableData.push([i++, q.text, options, q.correct, q.points]);
             });
-            doc.autoTable({ startY: 30, head: [['#', 'Question', 'Options', 'Ans', 'Pts']], body: tableData });
-            doc.save('Question_Bank.pdf');
+
+            doc.autoTable({
+                startY: 35,
+                head: [['#', 'Question', 'Options', 'Correct Ans', 'Pts']],
+                body: tableData,
+                theme: 'striped',
+                headStyles: { fillColor: [79, 70, 229], fontSize: 10, cellPadding: 4 },
+                columnStyles: {
+                    1: { columnWidth: 70 }, // Question column
+                    2: { columnWidth: 50 }, // Options column
+                },
+                styles: { fontSize: 9, cellPadding: 3, overflow: 'linebreak' }
+            });
+            
+            doc.save('CWSE_Question_Bank.pdf');
         }
+
         function logout() { auth.signOut(); }
     </script>
 </body>
